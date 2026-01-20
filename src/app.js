@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';  
 import cookieParser from 'cookie-parser';
 
+export const app = express();
+
 
 app.use(cors({
     origin:process.env.CORS_ORIGIN,
@@ -21,8 +23,9 @@ app.use(express.static('public'));
 
 app.use(cookieParser());
 
-export const app = express();
+// Importing Routes
+import {userRouter} from './routes/user.router.js';
+// Using Routes
+app.use('/api/v1/users',userRouter);
 
-app.get('/', (req, res) => {
-  res.send('Hello, World!');
-});
+//http://localhost:4000/api/v1/users/register
