@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
+import fs from 'fs';
 
 // Configuration
 cloudinary.config({
@@ -17,14 +18,18 @@ try{
     });
 
     // upload successful
-    console.log('Cloudinary upload response url:', response.url);
+   // console.log('Cloudinary upload response url:', response.url);
+    fs.unlinkSync(localFilePath); //remove file from local uploads folder
     return response;
+
 }   
     catch(error){
         fs.unlinkSync(localFilePath); //remove file from local uploads folder
         return null;
     }
 }
+
+
 
 
     

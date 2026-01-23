@@ -4,7 +4,7 @@ import {User} from '../models/user.models.js';
 import {uploadOnCloudinary} from '../utils/cloudinary.js';
 import {ApiResponse} from '../utils/apiResponse.js';
 
-export const registerUser= asyncHandler(async(req,res,next)=>{
+export const registerUser= asyncHandler(async(req,res)=>{
   // get user details from frontend
   // validation - not empty
   // check if user already exists: username, email
@@ -25,7 +25,7 @@ export const registerUser= asyncHandler(async(req,res,next)=>{
        throw new ApiError(400, "All fields are required");
     }
 
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{email},{username}]
     })
 
@@ -33,8 +33,12 @@ export const registerUser= asyncHandler(async(req,res,next)=>{
         throw new ApiError(409,"User already exists with this email or username");
     }
 
+     console.log(req.files);
+
     const avatarLocalPath = req.files?.avatar[0]?.path;
     const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+   
  
     if(!avatarLocalPath){
         throw new ApiError(400,"Avatar image is required");
@@ -54,21 +58,26 @@ export const registerUser= asyncHandler(async(req,res,next)=>{
         password,   
         avatar:avatar.url,
         coverImage:coverImage.url || '',
-    })
+    }).catch((error) => {
+        if (error.code === 11000) {
+            throw new ApiError(409, "User already exists with this email or username");
+        }
+        throw error;
+    });
 
     const createdUser = await User.findById(user._id).select('-password -refreshToken');
     if(!createdUser){
         throw new ApiError(500,"User not created");
     }
 
-    return res.status(201).json({
-        new ApiResponse(201,createdUser,"User registered successfully");
-    });
+    return res.status(201).json(
+        new ApiResponse(200,createdUser,"User registered successfully")
+    );
 
 
 });
 
-export const HelloUser= asyncHandler(async(req,res,next)=>{
+export const HelloUser= asyncHandler(async(req,res)=>{
 
     const users={
         name:"Tushar Chaudhari",
