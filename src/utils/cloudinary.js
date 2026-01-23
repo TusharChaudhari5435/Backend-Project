@@ -18,7 +18,7 @@ try{
 
     // upload successful
     console.log('Cloudinary upload response url:', response.url);
-    return response.url;
+    return response;
 }   
     catch(error){
         fs.unlinkSync(localFilePath); //remove file from local uploads folder
