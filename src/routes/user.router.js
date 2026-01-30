@@ -1,9 +1,10 @@
 import {Router} from 'express';
 import {upload} from '../middlewares/multer.middleware.js';
+import {VerifyToken} from '../middlewares/auth.middleware.js';
 
 const router=Router();
 
-import {registerUser,HelloUser} from '../controllers/user.controller.js'; 
+import {registerUser,loginUser,logoutUser,refreshAccessToken} from '../controllers/user.controller.js'; 
 
 router.post('/register',upload.fields([
     {
@@ -16,6 +17,10 @@ router.post('/register',upload.fields([
     }
 ]),registerUser);
 
-router.get('/test',HelloUser);
+router.post('/login',loginUser);
+
+router.post('/logout',VerifyToken,logoutUser);
+
+router.post('/refresh-token',refreshAccessToken);
 
 export const userRouter=router;

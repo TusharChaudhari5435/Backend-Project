@@ -1,13 +1,5 @@
-export const asyncHandler = (routeFunction)=>{
-    return async(req,res)=>{
-        try{
-            await routeFunction(req,res);
-        }catch(error){
-            res.status(error.statusCode || 500).json({
-                success:false,
-                message:error.message
-            })
-        }
-    }
-}
-
+export const asyncHandler = (fn) => {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
