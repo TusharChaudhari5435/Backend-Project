@@ -4,7 +4,7 @@ import {User} from '../models/user.models.js';
 import {uploadOnCloudinary} from '../utils/cloudinary.js';
 import {ApiResponse} from '../utils/apiResponse.js';
 import jwt from "jsonwebtoken";
-
+import mongoose from 'mongoose';
 const generateAccessAndRefreshToken = async(userId)=>{
     try{
     const user = await User.findById(userId);
@@ -217,7 +217,7 @@ export const changeCurrentPassword = asyncHandler(async(req,res)=>{
         throw new ApiError(404,"User not found");
     }
 
-    const isPasswordCorrect = await isPasswordCorrect(oldPassword);
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
 
     if(!isPasswordCorrect){
         throw new ApiError(400,"Invalid old Password");
@@ -238,7 +238,7 @@ export const changeCurrentPassword = asyncHandler(async(req,res)=>{
 
 export const getCurrentUserProfile = asyncHandler(async(req,res)=>{
     return res.status(200).json(
-       new ApiResponse(200,req.user,"User profile fetched successfully");
+       new ApiResponse(200,req.user,"User profile fetched successfully")
     ); 
 });
 
@@ -249,7 +249,7 @@ export const updateAccountDetails = asyncHandler(async(req,res)=>{
         throw new ApiError(400,"Full name and email are required");
     }
 
-    const user = User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,  
         {fullName,email},
         {new:true,runValidators:true}
@@ -267,7 +267,7 @@ export const updateAccountDetails = asyncHandler(async(req,res)=>{
 export const updateUserAvatar = asyncHandler(async(req,res)=>{
     const avatarLocalPath = req.file?.path;
     if(!avatarLocalPath){
-        throw new ApiError(400,"Avatar image is required");
+        throw new ApiError(400,"Avatar image is required"); 
     }
     const avatar = await uploadOnCloudinary(avatarLocalPath);
 
@@ -317,43 +317,42 @@ export const updateUserCoverImage = asyncHandler(async(req,res)=>{
     );
 });
 
-export const getChannelProfile = asyncHandler(async(req,res)=>{
-    const {username}=req.params;
-    if(!username){
-        throw new ApiError(400,"Username is required");
+export const getChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    if (!username) {
+        throw new ApiError(400, "Username is required");
     }
 
-    const channel = User.aggregate([
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+
+    const channel = await User.aggregate([
         {
-            $match:{userName:username.toLowerCase()}
+            $match: { userName: username.trim().toLowerCase() }
         },
         {
-            $lookup:{
-                from:"subscriptions",
-                localField:"_id",
-                foreignField:"channel",
-                as:"subscribers"
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
             }
         },
         {
-            $lookup:{
-                from:"subscriptions",
-                localField:"_id",
-                foreignField:"subscriber",
-                as:"subscribedTo"
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
             }
         },
         {
-            $addFields:{
-                subscribersCount:{
-                    $size:"$subscribers"
-                },
-                subscribedToCount:{
-                    $size:"$subscribedTo"
-                },
+            $addFields: {
+                subscribersCount: { $size: "$subscribers" },
+                subscribedToCount: { $size: "$subscribedTo" },
                 isSubscribed: {
-                    $cond:{
-                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                    $cond: {
+                        if: { $in: [userId, "$subscribers.subscriber"] },
                         then: true,
                         else: false
                     }
@@ -361,27 +360,28 @@ export const getChannelProfile = asyncHandler(async(req,res)=>{
             }
         },
         {
-            $project:{ 
-                fullName:1,
-                userName:1,
-                email:1,
-                avatar:1,
-                coverImage:1,
-                subscribersCount:1,
-                subscribedToCount:1,
-                isSubscribed:1
+            $project: {
+                fullName: 1,
+                userName: 1,
+                email: 1,
+                avatar: 1,
+                coverImage: 1,
+                subscribersCount: 1,
+                subscribedToCount: 1,
+                isSubscribed: 1
             }
         }
-    ])
+    ]);
 
-    if(!channel?.length){
-        throw new ApiError(404,"Channel not found");
+    if (!channel.length) {
+        throw new ApiError(404, "Channel not found");
     }
 
     return res.status(200).json(
-        new ApiResponse(200,channel[0],"Channel profile fetched successfully")
+        new ApiResponse(200, channel[0], "Channel profile fetched successfully")
     );
 });
+
 
 export const getWatchedHistory = asyncHandler(async(req,res)=>{ 
     const user = User.aggregate([
